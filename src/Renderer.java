@@ -1,9 +1,6 @@
 import javax.imageio.ImageIO;
 import java.awt.Color;
 import java.awt.image.BufferedImage;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.geom.Line2D;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -14,59 +11,23 @@ public class Renderer {
     Vec2D size;
     Line canvas;
     int scale;
-    Renderer(int scale, List<Line> lines){
+    Renderer(int scale, List<Line> lines) {
         this.scale = scale;
         this.setSize(lines);
     }
 
+    record Point (int x, int y, Color color){}
 
-    //public void makeimg(List<Line> lines) throws IOException {
-    //    int ocr, ocg, ocb;
-    //    int sizeY = (int) size.y*scale;
-    //    int sizeX = (int) size.x*scale;
-    //    BufferedImage img = new BufferedImage(sizeX, sizeY, BufferedImage.TYPE_INT_RGB);
-    //    Color rgbval = null;
-    //    for(int i=0; i<sizeX; i++){
-    //        for(int j=0; j<sizeY; j++){
-    //            rgbval = new Color(255,255,255);
-    //            img.setRGB(i, j, rgbval.getRGB());
-    //            for (Line line: lines) {
-    //                if (Renderer.intersects(((double) i/scale)/,((double) j/scale)/, line)){
-    //                    rgbval = new Color(0,0,0);
-    //                    img.setRGB(i, j, rgbval.getRGB());
-    //                }
-    //            }
-    //        }
-    //    }
-    //    File image = new File("image.png");
-    //    ImageIO.write(img, "png", image);
-    //}
-
-    public void makeimg(List<Line> lines) throws IOException {
-        int ocr, ocg, ocb;
-        int sizeX = (int) (this.size.x*scale);
-        int sizeY = (int) (this.size.y*scale);
-        double stepX = this.size.x/sizeX;
-        double stepY = this.size.y/sizeY;
-        BufferedImage img = new BufferedImage(sizeX+10, sizeY+10, BufferedImage.TYPE_INT_RGB);
-        Color rgbval = null;
-        for(double i=this.canvas.end.x; i<=this.canvas.start.x; i += stepX){
-            for(double j=this.canvas.end.y; j<=this.canvas.start.y; j += stepY){
-                for (Line line: lines) {
-                    if (Renderer.intersects(i, j, line)){
-                        rgbval = new Color(255,255,255);
-                        img.setRGB(
-                                (int) Math.floor(Math.abs((-i + this.canvas.start.x))/stepX)+5,
-                                (int) Math.floor(Math.abs((-j + this.canvas.start.y))/stepY)+5,
-                                rgbval.getRGB());
-                    }
-                }
-            
-                
-            }
+    public void makeimg(List<Line> lines, String fileName) throws IOException {
+        int sizeX = (int) Math.round(this.size.x*this.scale);
+        int sizeY = (int) Math.round(this.size.y*this.scale);
+        BufferedImage img = new BufferedImage(sizeX+this.scale/2, sizeY+this.scale/2, BufferedImage.TYPE_INT_RGB);
+        List<Point> points = new ArrayList<>();
+        for (Line line: lines) {
+            points.addAll(line(line, new Color(255,255,255)));
         }
-        File image = new File("image.png");
-        ImageIO.write(img, "png", image);
+        File image = new File(fileName + ".png");
+        ImageIO.write(draw(img, points), "png", image);
     }
 
     public void setSize(List<Line> lines) {
@@ -84,23 +45,34 @@ public class Renderer {
         double xMin = Arrays.stream(xArr).min().getAsDouble();
         double yMax = Arrays.stream(yArr).max().getAsDouble();
         double yMin = Arrays.stream(yArr).min().getAsDouble();
-        double xSize = xMax - xMin;
-        double ySize = yMax - yMin;
+        double xSize = xMax - xMin + 1;
+        double ySize = yMax - yMin + 1;
         this.size = new Vec2D(xSize,ySize);
         this.canvas = new Line(new Vec2D(xMax,yMax),new Vec2D(xMin,yMin));
     }
 
+    private List<Point> line(Line line, Color color) {//this gets a list of discrete points
+        List<Point> result = new ArrayList<>();
+        double n = Vec2D.diagonal_distance(line.start, line.end);
+        if (n == 0) result.add(new Point((int)  Math.round(line.start.x), (int)  Math.round(line.start.y), color));
+        //for (double step = 0.0; step <= n; step =+ ((double) 1 / this.scale))
+        for (int step = 0; step <= n*this.scale; ++step)
+        {
+            double t = ((double) step)/this.scale / n;
+            var lerp = line.lerp(t);
+            result.add(new Point((int)  Math.round(lerp.x * this.scale),(int)  Math.round(lerp.y * this.scale), color));
+        }
+        return result;
+    }
 
-
-    public static boolean intersects(double x, double y, Line line) {
-        Vec2D a = new Vec2D(line.start.x,line.start.y);
-        Vec2D b = new Vec2D(line.end.x,line.end.y);
-        Vec2D c = new Vec2D(x,y);
-        double ac = Vec2D.distance(a,c);
-        double bc = Vec2D.distance(b,c);
-        double ab = Vec2D.distance(a,b);
-        double linedist = Line.distance(line, c);
-        boolean res = Math.abs((Vec2D.distance(a,c) + Vec2D.distance(b,c)) - Vec2D.distance(a,b)) <= 0.1 && Math.abs(Line.distance(line, c)) <= 0.1;
-        return res;
+    public BufferedImage draw(BufferedImage image, List<Point> points) {
+        for (Point point: points) {
+            image.setRGB(
+                    point.x + (int)  Math.round(Math.abs(this.canvas.end.x * this.scale)),
+                    point.y + (int)  Math.round(Math.abs(this.canvas.end.y * this.scale)),
+                    point.color.getRGB()
+            );
+        }
+        return image;
     }
 }

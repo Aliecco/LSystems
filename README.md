@@ -22,3 +22,6 @@ This program is inspired by the book “The Algorithmic Beauty of Plants” by P
 ## Future Work:
 1. Make User-Friendly Interface: The program features an intuitive interface where users can easily input their desired parameters and instantly see the results.
 2. Potential enhancements include adding more complex graphical features, expanding the library of predefined L-systems, and integrating more advanced algorithms to simulate a broader range of natural phenomena.
+
+## Examples
+![image.png](examples%2Fimage.png)
